@@ -16,13 +16,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var (
-	accountSid = os.Getenv("TWILIO_ACCOUNT_SID")
-	authToken  = os.Getenv("TWILIO_AUTH_TOKEN")
-	sender     = os.Getenv("TWILIO_SENDER")
-	urlStr     = fmt.Sprintf("https://api.twilio.com/2010-04-01/Accounts/%v/Messages.json", accountSid)
-)
-
 type twilioConfig struct {
 	accountSid string
 	authToken  string
@@ -31,6 +24,13 @@ type twilioConfig struct {
 }
 
 func newTwilioConfig() (*twilioConfig, error) {
+	var (
+		accountSid = os.Getenv("TWILIO_ACCOUNT_SID")
+		authToken  = os.Getenv("TWILIO_AUTH_TOKEN")
+		sender     = os.Getenv("TWILIO_SENDER")
+		urlStr     = fmt.Sprintf("https://api.twilio.com/2010-04-01/Accounts/%v/Messages.json", accountSid)
+	)
+
 	if accountSid == "" || authToken == "" || sender == "" {
 		return nil, fmt.Errorf("Please set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_SENDER environment variables")
 	}
