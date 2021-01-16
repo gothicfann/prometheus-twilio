@@ -30,39 +30,6 @@ type twilioConfig struct {
 	urlStr     string
 }
 
-type sms struct {
-	l *log.Logger
-	c *twilioConfig
-}
-
-func main() {
-	c, err := newTwilioConfig()
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	l := log.New(os.Stdout, "PromTwilio ", log.LstdFlags)
-
-	smsHandler := newSms(l, c)
-
-	sm := mux.NewRouter()
-	postRouter := sm.Methods(http.MethodPost).PathPrefix("/alert").Subrouter()
-	postRouter.HandleFunc("/send", smsHandler.send)
-	log.Fatalln(http.ListenAndServe(":8080", sm))
-}
-
-type alertmanagerPayload struct {
-	Version string `json:"version"`
-	Status  string `json:"status"`
-	Alerts  []struct {
-		Annotations struct {
-			Summary     string `json:"summary"`
-			Description string `json:"description"`
-		} `json:"annotations"`
-		StartsAt time.Time `json:"startsAt"`
-	} `json:"alerts"`
-}
-
 func newTwilioConfig() (*twilioConfig, error) {
 	if accountSid == "" || authToken == "" || sender == "" {
 		return nil, fmt.Errorf("Please set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_SENDER environment variables")
@@ -74,6 +41,11 @@ func newTwilioConfig() (*twilioConfig, error) {
 		sender:     sender,
 		urlStr:     urlStr,
 	}, nil
+}
+
+type sms struct {
+	l *log.Logger
+	c *twilioConfig
 }
 
 func newSms(l *log.Logger, c *twilioConfig) *sms {
@@ -158,4 +130,32 @@ func (s *sms) send(w http.ResponseWriter, r *http.Request) {
 			wg.Done()
 		}(r)
 	}
+}
+
+type alertmanagerPayload struct {
+	Version string `json:"version"`
+	Status  string `json:"status"`
+	Alerts  []struct {
+		Annotations struct {
+			Summary     string `json:"summary"`
+			Description string `json:"description"`
+		} `json:"annotations"`
+		StartsAt time.Time `json:"startsAt"`
+	} `json:"alerts"`
+}
+
+func main() {
+	c, err := newTwilioConfig()
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	l := log.New(os.Stdout, "PromTwilio ", log.LstdFlags)
+
+	smsHandler := newSms(l, c)
+
+	sm := mux.NewRouter()
+	postRouter := sm.Methods(http.MethodPost).PathPrefix("/alert").Subrouter()
+	postRouter.HandleFunc("/send", smsHandler.send)
+	log.Fatalln(http.ListenAndServe(":8080", sm))
 }
