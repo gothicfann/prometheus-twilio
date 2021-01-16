@@ -24,7 +24,7 @@ Use comma separated numbers in `recipients` query parameter.
 Make sure to have `summary` and `description` annotations in your prometheus alerting rules included.  
 Example curl request to test:
 ```
-curl --location --request POST 'localhost:8080/alert/send?recipients=995595951244,995595951244,995595951244' \
+curl --location --request POST 'localhost:8080/alert/send?recipients=995595951230,995595951231,995595951232' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "version": "2",
