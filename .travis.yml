@@ -10,5 +10,5 @@ before_script:
   - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 
 script:
-  - docker build $IMAGE
+  - docker build . -t $IMAGE
   - docker push $IMAGE
