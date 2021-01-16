@@ -4,11 +4,13 @@ services:
   - docker
 
 env:
-  - IMAGE=gothicfan/prometheus-twilio:$TRAVIS_BUILD_NUMBER
+  - REPO=gothicfan/prometheus-twilio
+
 
 before_script:
   - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
 
 script:
-  - docker build . -t $IMAGE
-  - docker push $IMAGE
+  - docker build . -t $REPO:$TRAVIS_BUILD_NUMBER -t $REPO:latest
+  - docker push $REPO:$TRAVIS_BUILD_NUMBER
+  - docker push $REPO:latest
