@@ -148,7 +148,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	l := log.New(os.Stdout, "PromTwilio ", log.LstdFlags)
+	l := log.New(os.Stdout, "prometheus-twilio ", log.LstdFlags)
 
 	smsHandler := newSms(l, c)
 
