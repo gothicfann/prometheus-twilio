@@ -20,7 +20,7 @@ TWILIO_SENDER           # Twilio Sender Phone Number
 ```
 
 ## Usage
-Use comma separated numbers in `recipients` query parameter.  
+**Note: Use comma separated numbers in `recipients` query parameter without `+` sign.**  
 Make sure to have `summary` and `description` annotations in your prometheus alerting rules included.  
 Example curl request to test:
 ```
