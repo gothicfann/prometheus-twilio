@@ -98,6 +98,7 @@ func (s *sms) send(w http.ResponseWriter, r *http.Request) {
 			resp, err := s.client.Do(req)
 			if err != nil {
 				s.logger.Println(err)
+				wg.Done()
 				return
 			}
 
@@ -106,6 +107,7 @@ func (s *sms) send(w http.ResponseWriter, r *http.Request) {
 			err = decoder.Decode(&data)
 			if err != nil {
 				s.logger.Println(err)
+				wg.Done()
 				return
 			}
 			if resp.StatusCode >= 200 && resp.StatusCode <= 300 {
