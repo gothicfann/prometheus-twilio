@@ -42,19 +42,20 @@ func newTwilioConfig() (*twilioConfig, error) {
 }
 
 type sms struct {
-	l *log.Logger
-	c *twilioConfig
+	logger *log.Logger
+	config *twilioConfig
+	client *http.Client
 }
 
-func newSms(l *log.Logger, c *twilioConfig) *sms {
-	return &sms{l, c}
+func newSms(logger *log.Logger, config *twilioConfig, client *http.Client) *sms {
+	return &sms{logger, config, client}
 }
 
 func (s *sms) send(w http.ResponseWriter, r *http.Request) {
 	rec, ok := r.URL.Query()["recipients"]
 	if !ok {
 		msg := "URL param 'recipients' is missing"
-		s.l.Println(msg)
+		s.logger.Println(msg)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -65,14 +66,14 @@ func (s *sms) send(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
 	err := decoder.Decode(&data)
 	if err != nil {
-		s.l.Println(err)
+		s.logger.Println(err)
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
 	tpl, err := template.New("tpl").Parse("Status: {{.Status}}\n{{range .Alerts}}{{.Annotations.Summary}}: {{.Annotations.Description}}\n{{end}}")
 	if err != nil {
-		s.l.Println(err)
+		s.logger.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -85,19 +86,18 @@ func (s *sms) send(w http.ResponseWriter, r *http.Request) {
 		go func(r string) {
 			msgData := url.Values{}
 			msgData.Set("To", fmt.Sprintf("+%v", r))
-			msgData.Set("From", s.c.sender)
+			msgData.Set("From", s.config.sender)
 			msgData.Set("Body", smsBody.String())
 			msgDataReader := *strings.NewReader(msgData.Encode())
 
-			req, _ := http.NewRequest(http.MethodPost, s.c.urlStr, &msgDataReader)
-			req.SetBasicAuth(s.c.accountSid, s.c.authToken)
+			req, _ := http.NewRequest(http.MethodPost, s.config.urlStr, &msgDataReader)
+			req.SetBasicAuth(s.config.accountSid, s.config.authToken)
 			req.Header.Add("Accept", "application/json")
 			req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-			client := &http.Client{}
-			resp, err := client.Do(req)
+			resp, err := s.client.Do(req)
 			if err != nil {
-				s.l.Println(err)
+				s.logger.Println(err)
 				return
 			}
 
@@ -105,11 +105,11 @@ func (s *sms) send(w http.ResponseWriter, r *http.Request) {
 			decoder := json.NewDecoder(resp.Body)
 			err = decoder.Decode(&data)
 			if err != nil {
-				s.l.Println(err)
+				s.logger.Println(err)
 				return
 			}
 			if resp.StatusCode >= 200 && resp.StatusCode <= 300 {
-				s.l.Printf(
+				s.logger.Printf(
 					"Severity=Info HttpStatus=%v SmsStatus=%v SmsID=%v SmsBody=%v",
 					resp.StatusCode,
 					data["status"],
@@ -117,7 +117,7 @@ func (s *sms) send(w http.ResponseWriter, r *http.Request) {
 					data["body"],
 				)
 			} else {
-				s.l.Printf(
+				s.logger.Printf(
 					"Severity=Error HttpStatus=%v SmsStatus=%v SmsCode=%v SmsMessage=%v",
 					resp.StatusCode,
 					data["status"],
@@ -143,17 +143,18 @@ type alertmanagerPayload struct {
 }
 
 func main() {
-	c, err := newTwilioConfig()
+	config, err := newTwilioConfig()
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	l := log.New(os.Stdout, "prometheus-twilio ", log.LstdFlags)
+	logger := log.New(os.Stdout, "prometheus-twilio ", log.LstdFlags)
+	client := &http.Client{}
 
-	smsHandler := newSms(l, c)
+	smsHandler := newSms(logger, config, client)
 
-	sm := mux.NewRouter()
-	postRouter := sm.Methods(http.MethodPost).PathPrefix("/alert").Subrouter()
+	serveMux := mux.NewRouter()
+	postRouter := serveMux.Methods(http.MethodPost).PathPrefix("/alert").Subrouter()
 	postRouter.HandleFunc("/send", smsHandler.send)
-	log.Fatalln(http.ListenAndServe(":8080", sm))
+	log.Fatalln(http.ListenAndServe(":8080", serveMux))
 }
